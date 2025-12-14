@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Document Assistant</title>
+
+* {
+    pointer-events: auto !important;
+}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(120deg, #89f7fe, #66a6ff);
+        min-height: 100vh;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        width: 40%;
+        max-width: 600px;
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column;
+        height: 80vh;
+    }
+
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    .chat-box {
+        flex: 1;
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .message {
+        padding: 10px 14px;
+        border-radius: 12px;
+        max-width: 80%;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+    }
+
+    .user {
+        background: #4CAF50;
+        color: white;
+        align-self: flex-end;
+    }
+
+    .ai {
+        background: #e0e0e0;
+        color: #333;
+        align-self: flex-start;
+    }
+
+    form {
+        display: flex;
+        margin-top: 10px;
+        gap: 10px;
+    }
+
+    input[type="text"] {
+        flex: 1;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+    }
+
+    button {
+        padding: 12px 20px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    button:disabled {
+        background: #999;
+        cursor: not-allowed;
+    }
+
+    button:hover:not(:disabled) {
+        background: #45a049;
+    }
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h1>AI Document Assistant</h1>
+
+    <div class="chat-box" id="chat-box">
+        {% for msg in chat %}
+            {% if msg.startswith("User:") %}
+                <div class="message user">{{ msg[6:] }}</div>
+            {% else %}
+                <div class="message ai">{{ msg[4:] }}</div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <form id="chat-form">
+       <input
+  type="text"
+  id="question"
+  name="question"
+  placeholder="Ask a question..."
+  autocomplete="off"
+  autofocus
+/>
+
+        <button type="submit" id="send-btn">Ask</button>
+    </form>
+</div>
+
+<script>
+    console.log("JS loaded");
+const chatBox = document.getElementById("chat-box");
+const form = document.getElementById("chat-form");
+const input = document.getElementById("question");
+const button = document.getElementById("send-btn");
+
+chatBox.scrollTop = chatBox.scrollHeight;
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const question = input.value.trim();
+    if (!question) return;
+
+    // Disable input
+    input.disabled = true;
+    button.disabled = true;
+
+    // User message
+    const userMsg = document.createElement("div");
+    userMsg.className = "message user";
+    userMsg.textContent = question;
+    chatBox.appendChild(userMsg);
+
+    input.value = "";
+
+    // AI message placeholder
+    const aiMsg = document.createElement("div");
+    aiMsg.className = "message ai";
+    aiMsg.textContent = "";
+    chatBox.appendChild(aiMsg);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    try {
+        const formData = new FormData();
+        formData.append("question", question);
+
+const response = await fetch("/stream", {
+    method: "POST",
+    body: formData,
+    credentials: "same-origin"   // 🔥 THIS IS THE FIX
+});
+
+
+        if (!response.ok) {
+            throw new Error("Server error");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            aiMsg.textContent += decoder.decode(value, { stream: true });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+    } catch (err) {
+        aiMsg.textContent = "⚠️ Error: Unable to get response from AI.";
+        console.error(err);
+    } finally {
+        input.disabled = false;
+        button.disabled = false;
+        input.focus();
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Ollama
+.ollama/
+*.gguf
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask
+instance/
